@@ -28,14 +28,14 @@ const client = new MongoClient(uri, {
 
 // Creating MiddleWare for verifying
 const logger = async(req,res,next) =>{
-        console.log('called',req.hostname, req.originalUrl)
+        // console.log('called',req.hostname, req.originalUrl)
         next();
 }
 
 
 const verifyToken = async(req,res,next) =>{
     const token = req.cookies?.token;
-    console.log('Value of token in middleWare',token);
+    // console.log('Value of token in middleWare',token);
     if(!token){
       return res.status(401).send({message:'Not Authorized'})
     }
@@ -44,7 +44,7 @@ const verifyToken = async(req,res,next) =>{
         console.log(err)
         return res.status(401).send({message:'Unauthorized'})
       }
-      console.log('value in token', decoded)
+      // console.log('value in token', decoded)
       req.user = decoded;
       next();
     })
@@ -73,13 +73,13 @@ async function run() {
   app.post('/logout',async(req,res)=>{
     const user = req.body;
     res.clearCookie('token',{maxAge: 0}).send({success: true})
-    console.log('logging out')
+    // console.log('logging out')
   })
 
 
   app.post("/allRoom", async (req, res) => {
     const newRoom = req.body;
-    console.log(newRoom);
+    // console.log(newRoom);
     const result = await RoomCollection.insertOne(newRoom);
     res.send(result);
   });
@@ -90,34 +90,63 @@ async function run() {
     res.send(result);
   });
 
-  app.post('/bookedRooms',async(req,res)=>{
-    // const cursor = roomBookingCollection 
+  app.post('/bookedRooms', async (req, res) => {
     const newBooking = req.body;
-    console.log(newBooking);
+    newBooking.availability = 'notAvailable';
     const result = await roomBookingCollection.insertOne(newBooking);
+    // console.log(newBooking)
+    res.send(result);
+  });
+
+
+  // Updating Availability 
+  app.put('/updateAvailability/:id', async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const updateData = {$set: {availability: 'notAvailable' }}; 
+    const options = { upsert: true }; 
+    const result = await RoomCollection.updateOne(filter, updateData, options);
+    console.log(result)
     res.send(result);
   })
 
   app.get('/bookedRooms',logger, verifyToken, async(req,res)=>{
-    const cursor = roomBookingCollection.find();
+    const email = req.query.email;
+    // console.log(email)
+    let query = {};
+    if(req.query?.email){
+      query = {email : req.query.email}
+    }
+    const cursor = roomBookingCollection.find(query);
     const result = await cursor.toArray();
     res.send(result)
   })
 
-
   app.get("/roomDetails/:id", async (req, res) => {
     const roomId = req.params.id;
-    console.log(roomId)
+    // console.log(roomId)
     const query = {_id: new ObjectId(roomId) }
     const result = await RoomCollection.findOne(query)
     res.send(result);
   });
 
+  //  availability changing
+  app.patch('/updateRoomAvailability/:id',async(req,res)=>{
+    const roomId = req.params.id;
+    const availability = req.body.availability;
+    const filter = {_id:new ObjectId(roomId)};
+    const options = {upsert: true}
+    const update = {$set:{availability: 'available'}};
+    const result = await roomBookingCollection.updateOne(filter,update,options)
+    res.send(result);
+  })
+ 
+
 // getting data according email
   app.get('/allMyRooms',logger,verifyToken, async(req,res)=>{
     // console.log(req.query);
     // console.log('Getting Token', req.cookies.token)
-    console.log('Valid Token',req.user)
+    // console.log('Valid Token',req.user)
     let query = {};
     if(req.query.email){
       query = {email: req.query.email}
@@ -130,7 +159,7 @@ async function run() {
   // Updating Room Getting Id
   app.get('/updateRoom/:id',async(req,res)=>{
     const roomId = req.params.id;
-    console.log(roomId);
+    // console.log(roomId);
     const query = {_id: new ObjectId(roomId)}
     const result = await RoomCollection.findOne(query)
     res.send(result);
@@ -140,10 +169,10 @@ async function run() {
   app.put('/updateRoom/:id', async(req,res)=>{
     const id = req.params.id;
     const filter = {_id: new ObjectId(id)}
-    console.log(filter);
+    // console.log(filter);
     const options = {upsert: true};
     const updateRoom = req.body;
-    console.log(updateRoom);
+    // console.log(updateRoom);
     const newRoom = {
       $set: {
         roomDesc : updateRoom.roomDesc,
