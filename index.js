@@ -1,14 +1,20 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
 const port = 5000;
 
 // MiddleWare
-app.use(cors());
+app.use(cors({
+  origin : ['http://localhost:5173','http://localhost:5174'],
+  credentials : true
+}));
 app.use(express.json());
-console.log();
+app.use(cookieParser());
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.mgosmoz.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -20,16 +26,56 @@ const client = new MongoClient(uri, {
   },
 });
 
+// Creating MiddleWare for verifying
+const logger = async(req,res,next) =>{
+        console.log('called',req.hostname, req.originalUrl)
+        next();
+}
+
+
+const verifyToken = async(req,res,next) =>{
+    const token = req.cookies?.token;
+    console.log('Value of token in middleWare',token);
+    if(!token){
+      return res.status(401).send({message:'Not Authorized'})
+    }
+    jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
+      if(err){
+        console.log(err)
+        return res.status(401).send({message:'Unauthorized'})
+      }
+      console.log('value in token', decoded)
+      req.user = decoded;
+      next();
+    })
+}
+
+
 async function run() {
   const RoomCollection = client.db("Larisa").collection("allRoom");
   const roomBookingCollection = client.db("Larisa").collection("bookedRooms");
 
+  // Jwt Api 
+  app.post('/jwt',logger, async(req,res)=>{
+    const user = req.body;
+    // console.log(user);
+    const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '356d'})
+    res.cookie('token',token, {
+      httpOnly : true,
+      secure: false,
+      // sameSite :  'none',
+    })
+    // console.log(token)
+    res.send({success : true});
+  })
 
-  // app.post("allRoom",async(req,res)=>{
-  //   const cursor = RoomCollection.find();
-  //   const result = await cursor.toArray();
-  //   res.send(result);
-  // })
+  // Logging Out 
+  app.post('/logout',async(req,res)=>{
+    const user = req.body;
+    res.clearCookie('token',{maxAge: 0}).send({success: true})
+    console.log('logging out')
+  })
+
 
   app.post("/allRoom", async (req, res) => {
     const newRoom = req.body;
@@ -38,7 +84,7 @@ async function run() {
     res.send(result);
   });
 
-  app.get("/allRoom", async (req, res) => {
+  app.get("/allRoom",logger, async (req, res) => {
     const cursor = RoomCollection.find();
     const result = await cursor.toArray();
     res.send(result);
@@ -52,7 +98,7 @@ async function run() {
     res.send(result);
   })
 
-  app.get('/bookedRooms',async(req,res)=>{
+  app.get('/bookedRooms',logger, verifyToken, async(req,res)=>{
     const cursor = roomBookingCollection.find();
     const result = await cursor.toArray();
     res.send(result)
@@ -67,9 +113,11 @@ async function run() {
     res.send(result);
   });
 
-
-  app.get('/allMyRooms', async(req,res)=>{
+// getting data according email
+  app.get('/allMyRooms',logger,verifyToken, async(req,res)=>{
     // console.log(req.query);
+    // console.log('Getting Token', req.cookies.token)
+    console.log('Valid Token',req.user)
     let query = {};
     if(req.query.email){
       query = {email: req.query.email}
@@ -113,9 +161,7 @@ async function run() {
   })
 
 
-
-
-
+  // Delete Query
   app.delete('/allRoom/:id',async(req,res)=>{
     const id = req.params.id;
     // console.log(req.params)
