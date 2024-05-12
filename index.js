@@ -76,7 +76,6 @@ async function run() {
     // console.log('logging out')
   })
 
-
   app.post("/allRoom", async (req, res) => {
     const newRoom = req.body;
     // console.log(newRoom);
@@ -137,9 +136,16 @@ async function run() {
     const filter = {_id:new ObjectId(roomId)};
     const options = {upsert: true}
     const update = {$set:{availability: 'available'}};
-    const result = await roomBookingCollection.updateOne(filter,update,options)
-    res.send(result);
+    const roomBookResult = await roomBookingCollection.updateOne(filter,update,options)
+    const bookRoomFilter = {_id: new ObjectId(roomId)}
+    const roomUpdate = {$set: {availability : 'available'}}
+    const roomResult = await RoomCollection.updateOne(bookRoomFilter,roomUpdate,options)
+
+
+
+    res.send({roomBookResult,roomResult});
   })
+  
  
 
 // getting data according email
