@@ -59,40 +59,71 @@ async function run() {
   })
 
 
-
-
-
-
-  
-
   app.get("/roomDetails/:id", async (req, res) => {
     const roomId = req.params.id;
-    // console.log(roomId)
+    console.log(roomId)
     const query = {_id: new ObjectId(roomId) }
     const result = await RoomCollection.findOne(query)
     res.send(result);
   });
 
 
+  app.get('/allMyRooms', async(req,res)=>{
+    // console.log(req.query);
+    let query = {};
+    if(req.query.email){
+      query = {email: req.query.email}
+    }
+    const cursor = RoomCollection.find(query);
+    const result = await cursor.toArray();
+    res.send(result);
+  })
 
-  // Posting email 
-  // app.post('/myRoom/:email', async (req, res) => {
-  //   const userEmail = req.params.email;
-  //   const newRoom = req.body;
-  //   console.log('post',userEmail)
-  //   newRoom.email = userEmail; // Add the user's email to the Room object
-  //   const result = await RoomCollection.insertOne(newRoom);
-  //   res.send(result);
-  // });
+  // Updating Room Getting Id
+  app.get('/updateRoom/:id',async(req,res)=>{
+    const roomId = req.params.id;
+    console.log(roomId);
+    const query = {_id: new ObjectId(roomId)}
+    const result = await RoomCollection.findOne(query)
+    res.send(result);
+  })
 
-  // Getting Data According to email
-  // app.get('/allRooms', async (req, res) => {
-  //   const userEmail = req.query.email;
-  //   console.log('get',userEmail)
-  //   const query = { email: userEmail };
-  //   const result = RoomCollection.find(query).toArray();
-  //   res.send(result);
-  // });
+  // Updating Room Updating with id
+  app.put('/updateRoom/:id', async(req,res)=>{
+    const id = req.params.id;
+    const filter = {_id: new ObjectId(id)}
+    console.log(filter);
+    const options = {upsert: true};
+    const updateRoom = req.body;
+    console.log(updateRoom);
+    const newRoom = {
+      $set: {
+        roomDesc : updateRoom.roomDesc,
+        price :updateRoom.price,
+        availability: updateRoom.availability,
+        size:updateRoom.size,
+        offer:updateRoom.offer,
+        image:updateRoom.image,
+        email:updateRoom.email
+      }
+    }
+    console.log(newRoom)
+    const result = await RoomCollection.updateOne(filter,newRoom,options)
+    res.send(result);
+  })
+
+
+
+
+
+  app.delete('/allRoom/:id',async(req,res)=>{
+    const id = req.params.id;
+    // console.log(req.params)
+    // console.log(id)
+    const query = {_id: new ObjectId(id)}
+    const result = await RoomCollection.deleteOne(query);
+    res.send(result)
+  })
 
   try {
     // Connect the client to the server	(optional starting in v4.7)
