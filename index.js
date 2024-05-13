@@ -98,16 +98,7 @@ async function run() {
   });
 
 
-  // Updating Availability 
-  app.put('/updateAvailability/:id', async (req, res) => {
-    const id = req.params.id;
-    const filter = { _id: new ObjectId(id) };
-    const updateData = {$set: {availability: 'notAvailable' }}; 
-    const options = { upsert: true }; 
-    const result = await RoomCollection.updateOne(filter, updateData, options);
-    console.log(result)
-    res.send(result);
-  })
+
 
   app.get('/bookedRooms',logger, verifyToken, async(req,res)=>{
     const email = req.query.email;
@@ -129,24 +120,57 @@ async function run() {
     res.send(result);
   });
 
-  //  availability changing
-  app.patch('/updateRoomAvailability/:id',async(req,res)=>{
-    const roomId = req.params.id;
-    const availability = req.body.availability;
-    const filter = {_id:new ObjectId(roomId)};
-    const options = {upsert: true}
-    const update = {$set:{availability: 'available'}};
-    const roomBookResult = await roomBookingCollection.updateOne(filter,update,options)
-    const bookRoomFilter = {_id: new ObjectId(roomId)}
-    const roomUpdate = {$set: {availability : 'available'}}
-    const roomResult = await RoomCollection.updateOne(bookRoomFilter,roomUpdate,options)
 
-
-
-    res.send({roomBookResult,roomResult});
+  // Updating Availability 
+  app.put('/updateAvailability/:id', async (req, res) => {
+    const id = req.params.id;
+    const { _id, newId } = req.body; 
+    // console.log(_id, newId);
+    const filter = { _id: new ObjectId(id) };
+    const updateData = {$set: {availability: 'notAvailable',newId}}; 
+    const options = { upsert: true }; 
+    const result = await RoomCollection.updateOne(filter, updateData, options);
+    console.log(result)
+    res.send(result);
   })
-  
- 
+
+  // From Cancel Availability Updating 
+  app.put(`/updatingRoomAvailability/:newId`,async(req,res)=>{
+    const oldId = req.body.newId;
+    console.log(oldId)
+    const filter = { newId: oldId };
+    console.log('Filter',filter)
+    const updateData = {$set : {availability : 'available'}};
+    console.log(updateData)
+    const options = {upsert : true};
+    console.log(options)
+    const result = await RoomCollection.updateOne(filter,updateData,options);
+    // console.log(result)
+    res.send(result);
+  })
+
+  //  availability changing
+  // app.patch('/updateRoomAvailability/:id',async(req,res)=>{
+  //   const roomId = req.params.id;
+  //   const availability = req.body.availability;
+  //   const filter = {_id:new ObjectId(roomId)};
+  //   const options = {upsert: true}
+  //   const update = {$set:{availability: 'available'}};
+  //   const roomBookResult = await roomBookingCollection.updateOne(filter,update,options)
+  //   const bookRoomFilter = {_id: new ObjectId(roomId)}
+  //   const roomUpdate = {$set: {availability : 'available'}}
+  //   const roomResult = await RoomCollection.updateOne(bookRoomFilter,roomUpdate,options)
+  //   res.send({roomBookResult,roomResult});
+  // })
+
+  // Deleting Booking 
+  app.delete('/bookingRoomDelete/:id',async(req,res)=>{
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await roomBookingCollection.deleteOne(query);
+    res.send(result)
+  })
+
 
 // getting data according email
   app.get('/allMyRooms',logger,verifyToken, async(req,res)=>{
