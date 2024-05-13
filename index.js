@@ -54,6 +54,7 @@ const verifyToken = async(req,res,next) =>{
 async function run() {
   const RoomCollection = client.db("Larisa").collection("allRoom");
   const roomBookingCollection = client.db("Larisa").collection("bookedRooms");
+  const reviewCollection = client.db("Larisa").collection("reviews");
 
   // Jwt Api 
   app.post('/jwt',logger, async(req,res)=>{
@@ -170,6 +171,21 @@ async function run() {
     const result = await roomBookingCollection.deleteOne(query);
     res.send(result)
   })
+
+  // Post Reviews 
+  app.post('/reviews',async(req,res)=>{
+    const newReview = req.body;
+    const result = await reviewCollection.insertOne(newReview);
+    console.log(newReview)
+    res.send(result);
+  })
+
+  app.get("/reviews",logger, async (req, res) => {
+    const cursor = reviewCollection.find();
+    const result = await cursor.toArray();
+    res.send(result);
+  });
+
 
 
 // getting data according email
