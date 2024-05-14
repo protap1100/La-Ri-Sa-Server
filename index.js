@@ -8,10 +8,12 @@ require("dotenv").config();
 const port = 5000;
 
 // MiddleWare
-app.use(cors({
-  origin : ['http://localhost:5173','http://localhost:5174'],
-  credentials : true
-}));
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:5174"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -27,55 +29,55 @@ const client = new MongoClient(uri, {
 });
 
 // Creating MiddleWare for verifying
-const logger = async(req,res,next) =>{
-        // console.log('called',req.hostname, req.originalUrl)
-        next();
-}
+const logger = async (req, res, next) => {
+  // console.log('called',req.hostname, req.originalUrl)
+  next();
+};
 
-
-const verifyToken = async(req,res,next) =>{
-    const token = req.cookies?.token;
-    // console.log('Value of token in middleWare',token);
-    if(!token){
-      return res.status(401).send({message:'Not Authorized'})
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  // console.log('Value of token in middleWare',token);
+  if (!token) {
+    return res.status(401).send({ message: "Not Authorized" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      console.log(err);
+      return res.status(401).send({ message: "Unauthorized" });
     }
-    jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err,decoded)=>{
-      if(err){
-        console.log(err)
-        return res.status(401).send({message:'Unauthorized'})
-      }
-      // console.log('value in token', decoded)
-      req.user = decoded;
-      next();
-    })
-}
-
+    // console.log('value in token', decoded)
+    req.user = decoded;
+    next();
+  });
+};
 
 async function run() {
   const RoomCollection = client.db("Larisa").collection("allRoom");
   const roomBookingCollection = client.db("Larisa").collection("bookedRooms");
   const reviewCollection = client.db("Larisa").collection("reviews");
 
-  // Jwt Api 
-  app.post('/jwt',logger, async(req,res)=>{
+  // Jwt Api
+  app.post("/jwt", logger, async (req, res) => {
     const user = req.body;
     // console.log(user);
-    const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '356d'})
-    res.cookie('token',token, {
-      httpOnly : true,
+    const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+      expiresIn: "356d",
+    });
+    res.cookie("token", token, {
+      httpOnly: true,
       secure: false,
       // sameSite :  'none',
-    })
+    });
     // console.log(token)
-    res.send({success : true});
-  })
+    res.send({ success: true });
+  });
 
-  // Logging Out 
-  app.post('/logout',async(req,res)=>{
+  // Logging Out
+  app.post("/logout", async (req, res) => {
     const user = req.body;
-    res.clearCookie('token',{maxAge: 0}).send({success: true})
+    res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     // console.log('logging out')
-  })
+  });
 
   app.post("/allRoom", async (req, res) => {
     const newRoom = req.body;
@@ -84,71 +86,81 @@ async function run() {
     res.send(result);
   });
 
-  app.get("/allRoom",logger, async (req, res) => {
+  app.get("/allRoom", logger, async (req, res) => {
     const cursor = RoomCollection.find();
     const result = await cursor.toArray();
     res.send(result);
   });
 
-  app.post('/bookedRooms', async (req, res) => {
+  app.post("/bookedRooms", async (req, res) => {
     const newBooking = req.body;
-    newBooking.availability = 'notAvailable';
+    newBooking.availability = "notAvailable";
     const result = await roomBookingCollection.insertOne(newBooking);
     // console.log(newBooking)
     res.send(result);
   });
 
-
-
-
-  app.get('/bookedRooms',logger, verifyToken, async(req,res)=>{
+  app.get("/bookedRooms", logger, verifyToken, async (req, res) => {
     const email = req.query.email;
     // console.log(email)
     let query = {};
-    if(req.query?.email){
-      query = {email : req.query.email}
+    if (req.query?.email) {
+      query = { email: req.query.email };
     }
     const cursor = roomBookingCollection.find(query);
     const result = await cursor.toArray();
-    res.send(result)
-  })
+    res.send(result);
+  });
 
   app.get("/roomDetails/:id", async (req, res) => {
     const roomId = req.params.id;
     // console.log(roomId)
-    const query = {_id: new ObjectId(roomId) }
-    const result = await RoomCollection.findOne(query)
+    const query = { _id: new ObjectId(roomId) };
+    const result = await RoomCollection.findOne(query);
     res.send(result);
   });
 
-
-  // Updating Availability 
-  app.put('/updateAvailability/:id', async (req, res) => {
+  // Updating Availability
+  app.put("/updateAvailability/:id", async (req, res) => {
     const id = req.params.id;
-    const { _id, newId } = req.body; 
+    const { _id, newId } = req.body;
     // console.log(_id, newId);
     const filter = { _id: new ObjectId(id) };
-    const updateData = {$set: {availability: 'notAvailable',newId}}; 
-    const options = { upsert: true }; 
+    const updateData = { $set: { availability: "notAvailable", newId } };
+    const options = { upsert: true };
     const result = await RoomCollection.updateOne(filter, updateData, options);
-    console.log(result)
+    console.log(result);
     res.send(result);
-  })
+  });
 
-  // From Cancel Availability Updating 
-  app.put(`/updatingRoomAvailability/:newId`,async(req,res)=>{
+  // From Cancel Availability Updating
+  app.put(`/updatingRoomAvailability/:newId`, async (req, res) => {
     const oldId = req.body.newId;
-    console.log(oldId)
+    console.log(oldId);
     const filter = { newId: oldId };
-    console.log('Filter',filter)
-    const updateData = {$set : {availability : 'available'}};
-    console.log(updateData)
-    const options = {upsert : true};
-    console.log(options)
-    const result = await RoomCollection.updateOne(filter,updateData,options);
+    console.log("Filter", filter);
+    const updateData = { $set: { availability: "available" } };
+    console.log(updateData);
+    const options = { upsert: true };
+    console.log(options);
+    const result = await RoomCollection.updateOne(filter, updateData, options);
     // console.log(result)
     res.send(result);
-  })
+  });
+
+  // Filter Api's
+  app.get("/filterRooms", async (req, res) => {
+    const minPrice = parseInt(req.query.minPrice);
+    const maxPrice = parseInt(req.query.maxPrice);
+    console.log(minPrice, maxPrice);
+    const query = {
+      price: { $gte: minPrice, $lte: maxPrice }
+    };
+    const cursor = RoomCollection.find(query);
+    const result = await cursor.toArray();
+    console.log(result)
+    res.send(result);
+  });
 
   //  availability changing
   // app.patch('/updateRoomAvailability/:id',async(req,res)=>{
@@ -164,87 +176,84 @@ async function run() {
   //   res.send({roomBookResult,roomResult});
   // })
 
-  // Deleting Booking 
-  app.delete('/bookingRoomDelete/:id',async(req,res)=>{
+  // Deleting Booking
+  app.delete("/bookingRoomDelete/:id", async (req, res) => {
     const id = req.params.id;
-    const query = {_id: new ObjectId(id)}
+    const query = { _id: new ObjectId(id) };
     const result = await roomBookingCollection.deleteOne(query);
-    res.send(result)
-  })
+    res.send(result);
+  });
 
-  // Post Reviews 
-  app.post('/reviews',async(req,res)=>{
+  // Post Reviews
+  app.post("/reviews", async (req, res) => {
     const newReview = req.body;
     const result = await reviewCollection.insertOne(newReview);
-    console.log(newReview)
+    console.log(newReview);
     res.send(result);
-  })
+  });
 
-  app.get("/reviews",logger, async (req, res) => {
-    const cursor = reviewCollection.find();
+  app.get("/reviews", logger, async (req, res) => {
+    const cursor = reviewCollection.find().sort({ time: -1 });
     const result = await cursor.toArray();
     res.send(result);
   });
 
-
-
-// getting data according email
-  app.get('/allMyRooms',logger,verifyToken, async(req,res)=>{
+  // getting data according email
+  app.get("/allMyRooms", logger, verifyToken, async (req, res) => {
     // console.log(req.query);
     // console.log('Getting Token', req.cookies.token)
     // console.log('Valid Token',req.user)
     let query = {};
-    if(req.query.email){
-      query = {email: req.query.email}
+    if (req.query.email) {
+      query = { email: req.query.email };
     }
     const cursor = RoomCollection.find(query);
     const result = await cursor.toArray();
     res.send(result);
-  })
+  });
 
   // Updating Room Getting Id
-  app.get('/updateRoom/:id',async(req,res)=>{
+  app.get("/updateRoom/:id", async (req, res) => {
     const roomId = req.params.id;
     // console.log(roomId);
-    const query = {_id: new ObjectId(roomId)}
-    const result = await RoomCollection.findOne(query)
+    const query = { _id: new ObjectId(roomId) };
+    const result = await RoomCollection.findOne(query);
     res.send(result);
-  })
+  });
 
   // Updating Room Updating with id
-  app.put('/updateRoom/:id', async(req,res)=>{
+  app.put("/updateRoom/:id", async (req, res) => {
     const id = req.params.id;
-    const filter = {_id: new ObjectId(id)}
+    const filter = { _id: new ObjectId(id) };
     // console.log(filter);
-    const options = {upsert: true};
+    const options = { upsert: true };
     const updateRoom = req.body;
     // console.log(updateRoom);
     const newRoom = {
       $set: {
-        roomDesc : updateRoom.roomDesc,
-        price :updateRoom.price,
+        roomDesc: updateRoom.roomDesc,
+        price: updateRoom.price,
         availability: updateRoom.availability,
-        size:updateRoom.size,
-        offer:updateRoom.offer,
-        image:updateRoom.image,
-        email:updateRoom.email
-      }
-    }
-    console.log(newRoom)
-    const result = await RoomCollection.updateOne(filter,newRoom,options)
+        size: updateRoom.size,
+        offer: updateRoom.offer,
+        image: updateRoom.image,
+        email: updateRoom.email,
+      },
+    };
+    console.log(newRoom);
+    const result = await RoomCollection.updateOne(filter, newRoom, options);
     res.send(result);
-  })
-
+  });
 
   // Delete Query
-  app.delete('/allRoom/:id',async(req,res)=>{
+  app.delete("/allRoom/:id", async (req, res) => {
     const id = req.params.id;
     // console.log(req.params)
     // console.log(id)
-    const query = {_id: new ObjectId(id)}
+    const query = { _id: new ObjectId(id) };
     const result = await RoomCollection.deleteOne(query);
-    res.send(result)
-  })
+    res.send(result);
+  });
 
   try {
     // Connect the client to the server	(optional starting in v4.7)
