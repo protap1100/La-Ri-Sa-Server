@@ -75,7 +75,7 @@ async function run() {
   // Logging Out
   app.post("/logout", async (req, res) => {
     const user = req.body;
-    res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    res.clearCookie("token", { maxAge: 0,sameSite:'none',secure:true }).send({ success: true });
     // console.log('logging out')
   });
 
