@@ -10,7 +10,7 @@ const port = process.env.PORT || 5000;
 // MiddleWare
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: ["https://resort-la-ri-sa.web.app","http://localhost:5173", "http://localhost:5174",],
     credentials: true,
   })
 );
@@ -36,7 +36,7 @@ const logger = async (req, res, next) => {
 
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
-  // console.log('Value of token in middleWare',token);
+  console.log('Value of token in middleWare',token);
   if (!token) {
     return res.status(401).send({ message: "Not Authorized" });
   }
@@ -65,8 +65,8 @@ async function run() {
     });
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
-      // sameSite :  'none',
+      secure: true,
+      sameSite :  'none',
     });
     // console.log(token)
     res.send({ success: true });
@@ -152,30 +152,15 @@ async function run() {
   app.get("/filterRooms", async (req, res) => {
     const minPrice = parseInt(req.query.minPrice);
     const maxPrice = parseInt(req.query.maxPrice);
-    console.log(minPrice, maxPrice);
+    // console.log(minPrice, maxPrice);
     const query = {
-      price: { $gte: minPrice, $lte: maxPrice,availability : 'available' }
-      
+      price: { $gte: minPrice, $lte: maxPrice},availability : 'available' 
     };
     const cursor = RoomCollection.find(query);
     const result = await cursor.toArray();
     console.log(result)
     res.send(result);
   });
-
-  //  availability changing
-  // app.patch('/updateRoomAvailability/:id',async(req,res)=>{
-  //   const roomId = req.params.id;
-  //   const availability = req.body.availability;
-  //   const filter = {_id:new ObjectId(roomId)};
-  //   const options = {upsert: true}
-  //   const update = {$set:{availability: 'available'}};
-  //   const roomBookResult = await roomBookingCollection.updateOne(filter,update,options)
-  //   const bookRoomFilter = {_id: new ObjectId(roomId)}
-  //   const roomUpdate = {$set: {availability : 'available'}}
-  //   const roomResult = await RoomCollection.updateOne(bookRoomFilter,roomUpdate,options)
-  //   res.send({roomBookResult,roomResult});
-  // })
 
   // Deleting Booking
   app.delete("/bookingRoomDelete/:id", async (req, res) => {
