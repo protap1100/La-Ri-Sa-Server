@@ -5,7 +5,7 @@ const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 // MiddleWare
 app.use(
@@ -116,7 +116,7 @@ async function run() {
     const roomId = req.params.id;
     const query = { _id: new ObjectId(roomId) };
     const result = await RoomCollection.findOne(query);
-    
+
     res.send(result);
   });
 
@@ -154,7 +154,8 @@ async function run() {
     const maxPrice = parseInt(req.query.maxPrice);
     console.log(minPrice, maxPrice);
     const query = {
-      price: { $gte: minPrice, $lte: maxPrice }
+      price: { $gte: minPrice, $lte: maxPrice,availability : 'available' }
+      
     };
     const cursor = RoomCollection.find(query);
     const result = await cursor.toArray();
@@ -259,9 +260,9 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
+      "Successfully Deployed to Mongodb"
     );
   } finally {
     // Ensures that the client will close when you finish/error
