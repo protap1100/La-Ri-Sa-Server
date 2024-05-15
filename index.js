@@ -10,7 +10,11 @@ const port = process.env.PORT || 5000;
 // MiddleWare
 app.use(
   cors({
-    origin: ["https://resort-la-ri-sa.web.app","http://localhost:5173", "http://localhost:5174",],
+    origin: [
+      "https://resort-la-ri-sa.web.app",
+      "http://localhost:5173",
+      "http://localhost:5174",
+    ],
     credentials: true,
   })
 );
@@ -36,7 +40,7 @@ const logger = async (req, res, next) => {
 
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
-  console.log('Value of token in middleWare',token);
+  // console.log('Value of token in middleWare',token);
   if (!token) {
     return res.status(401).send({ message: "Not Authorized" });
   }
@@ -66,7 +70,7 @@ async function run() {
     res.cookie("token", token, {
       httpOnly: true,
       secure: true,
-      sameSite :  'none',
+      sameSite: "none",
     });
     // console.log(token)
     res.send({ success: true });
@@ -75,7 +79,9 @@ async function run() {
   // Logging Out
   app.post("/logout", async (req, res) => {
     const user = req.body;
-    res.clearCookie("token", { maxAge: 0,sameSite:'none',secure:true }).send({ success: true });
+    res
+      .clearCookie("token", { maxAge: 0, sameSite: "none", secure: true })
+      .send({ success: true });
     // console.log('logging out')
   });
 
@@ -154,11 +160,12 @@ async function run() {
     const maxPrice = parseInt(req.query.maxPrice);
     // console.log(minPrice, maxPrice);
     const query = {
-      price: { $gte: minPrice, $lte: maxPrice},availability : 'available' 
+      price: { $gte: minPrice, $lte: maxPrice },
+      availability: "available",
     };
     const cursor = RoomCollection.find(query);
     const result = await cursor.toArray();
-    console.log(result)
+    console.log(result);
     res.send(result);
   });
 
@@ -195,6 +202,31 @@ async function run() {
     }
     const cursor = RoomCollection.find(query);
     const result = await cursor.toArray();
+    res.send(result);
+  });
+
+  // Updating Date Getting Id
+  app.get("/updateDate/:id", async (req, res) => {
+    const dateId = req.params.id;
+    console.log(dateId);
+    const query = { _id: new ObjectId(dateId) };
+    const result = await roomBookingCollection.findOne(query);
+    res.send(result);
+  });
+
+  // Updating Date  with id
+  app.put("/updateDate/:id", async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) };
+    const options = { upsert: true };
+    const updatedDate = req.body;
+    const newRoom = {
+      $set: {
+        date: updatedDate.newTime
+      },
+    };
+    // console.log(newRoom);
+    const result = await roomBookingCollection.updateOne(filter, newRoom, options);
     res.send(result);
   });
 
@@ -246,9 +278,7 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Successfully Deployed to Mongodb"
-    );
+    console.log("Successfully Deployed to Mongodb");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
