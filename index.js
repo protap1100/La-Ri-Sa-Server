@@ -3,9 +3,10 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const app = express();
 require("dotenv").config();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5010;
 
 // MiddleWare
 app.use(
@@ -59,6 +60,8 @@ async function run() {
   const RoomCollection = client.db("Larisa").collection("allRoom");
   const roomBookingCollection = client.db("Larisa").collection("bookedRooms");
   const reviewCollection = client.db("Larisa").collection("reviews");
+  const contactCollection = client.db("Larisa").collection("contact");
+  const userCollection = client.db("Larisa").collection("user");
 
   // Jwt Api
   app.post("/jwt", logger, async (req, res) => {
@@ -222,11 +225,15 @@ async function run() {
     const updatedDate = req.body;
     const newRoom = {
       $set: {
-        date: updatedDate.newTime
+        date: updatedDate.newTime,
       },
     };
     // console.log(newRoom);
-    const result = await roomBookingCollection.updateOne(filter, newRoom, options);
+    const result = await roomBookingCollection.updateOne(
+      filter,
+      newRoom,
+      options
+    );
     res.send(result);
   });
 
@@ -266,11 +273,82 @@ async function run() {
   // Delete Query
   app.delete("/allRoom/:id", async (req, res) => {
     const id = req.params.id;
-    // console.log(req.params)
-    // console.log(id)
     const query = { _id: new ObjectId(id) };
     const result = await RoomCollection.deleteOne(query);
     res.send(result);
+  });
+
+// user related api's
+ app.post('/user',async(req,res)=>{
+  const userData = req.body;
+  const result = await userCollection.insertOne(userData)
+  console.log(result)
+  res.send(result);
+ })
+
+ app.get('/user',async(req,res)=>{
+  const userEmail = req.query.email;
+  let query = {};
+  if (req.query?.email) {
+    query = { email: userEmail };
+  }
+  console.log('user email',userEmail, 'query' , query)
+  const cursor = await userCollection.findOne(query);
+  console.log(cursor)
+  res.send(cursor);
+ })
+
+//  DashBoard All Data 
+
+app.get('/allUserData',async(req,res)=>{
+  const allUserData = await userCollection.find().toArray();
+  res.send(allUserData);
+})
+
+app.get('/contact',async(req,res)=>{
+  const contact = await contactCollection.find().toArray();
+  res.send(contact);
+})
+
+app.get('/allAdminRoom',async(req,res)=>{
+  const allAdminRoom = await RoomCollection.find().toArray();
+  res.send(allAdminRoom);
+})
+
+
+
+// Contact us related api's
+   app.post('/contact',async(req,res)=>{
+    const message = req.body;
+    const result = await contactCollection.insertOne(message)
+    console.log(result)
+    res.send(result)
+   })
+
+
+
+  // New Updated Payment Related Api's
+  app.get("/payment/:id", async (req, res) => {
+    const paymentId = req.params.id;
+    const query = { _id: new ObjectId(paymentId) };
+    const result = await roomBookingCollection.findOne(query);
+    res.send(result);
+  });
+
+  // Stripe Payment api's
+  app.post("/create-payment-intent", async (req, res) => {
+    const { price } = req.body;
+    const amount = parseInt(price * 100);
+    console.log(amount)
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: "usd",
+      payment_method_types: ["card"],
+    });
+    console.log(paymentIntent.client_secret,'client sectincpaickan')
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
   });
 
   try {
